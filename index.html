@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111827">
+  <meta name="description" content="Planejador de estudos para o ENEM 2027 com cronograma, simulados e caderno de erros.">
+  <title>Atlas ENEM 2027 — Planejador de Estudos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lucide-static@0.468.0/font/lucide.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
+  <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.js" defer></script>
+  <script src="script.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <a class="brand" href="#" aria-label="Atlas ENEM 2027 início">
+        <span class="brand-mark"><i data-lucide="graduation-cap"></i></span>
+        <span><strong>atlas</strong><small>ENEM 2027</small></span>
+      </a>
+      <div class="side-label">ESPAÇO DE ESTUDO</div>
+      <nav class="nav-list" aria-label="Navegação principal">
+        <button class="nav-item active" data-tab="dashboard"><i data-lucide="layout-dashboard"></i><span>Dashboard geral</span></button>
+        <button class="nav-item" data-tab="schedule"><i data-lucide="calendar-days"></i><span>Cronograma</span><span class="nav-count">44</span></button>
+        <button class="nav-item" data-tab="simulations"><i data-lucide="chart-no-axes-combined"></i><span>Simulados</span></button>
+        <button class="nav-item" data-tab="errors"><i data-lucide="notebook-pen"></i><span>Caderno de erros</span></button>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="backup-card">
+          <div class="backup-icon"><i data-lucide="shield-check"></i></div>
+          <strong>Seus dados, sob seu controle</strong>
+          <p>Faça backups periódicos para manter seu progresso seguro.</p>
+          <button class="btn btn-secondary btn-small full" id="exportBtn"><i data-lucide="download"></i> Exportar backup</button>
+          <button class="text-button full" id="importBtn"><i data-lucide="upload"></i> Importar backup</button>
+          <input type="file" id="importFile" accept="application/json,.json" hidden>
+        </div>
+        <button class="nav-item" id="resetBtn"><i data-lucide="refresh-ccw"></i><span>Resetar dados</span></button>
+        <div class="user-mini"><div class="avatar">E</div><div><strong>Estudante</strong><small id="sidebarLevel">Nível 1 · Iniciante</small></div><span class="status-dot"></span></div>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <button class="icon-btn mobile-menu" id="menuBtn" aria-label="Abrir menu"><i data-lucide="menu"></i></button>
+        <div class="breadcrumb"><span>Workspace</span><i data-lucide="chevron-right"></i><strong id="pageName">Dashboard geral</strong></div>
+        <div class="top-actions">
+          <span class="save-status"><span class="status-dot"></span> Salvo neste dispositivo</span>
+          <button class="icon-btn" id="themeBtn" aria-label="Alternar tema"><i data-lucide="moon"></i></button>
+        </div>
+      </header>
+
+      <section class="page active" id="dashboardPage">
+        <div class="page-heading">
+          <div><div class="eyebrow">SEXTA-FEIRA, 20 DE NOVEMBRO DE 2026</div><h1>Seu próximo passo começa aqui.</h1><p>Acompanhe sua consistência e transforme preparação em resultado.</p></div>
+          <button class="btn btn-primary" data-go="schedule"><i data-lucide="calendar-plus"></i> Ver cronograma</button>
+        </div>
+        <div class="kpi-grid">
+          <article class="card kpi-card"><div class="kpi-top"><span>Progresso do edital</span><span class="kpi-icon purple"><i data-lucide="book-open-check"></i></span></div><div class="kpi-value" id="syllabusValue">0%</div><div class="progress-track"><div class="progress-fill purple-fill" id="syllabusBar"></div></div><div class="kpi-foot"><span id="syllabusDetail">0 de 792 tópicos concluídos</span><span class="trend neutral">Cronograma</span></div></article>
+          <article class="card kpi-card"><div class="kpi-top"><span>Questões resolvidas</span><span class="kpi-icon blue"><i data-lucide="target"></i></span></div><div class="kpi-value" id="questionsValue">0 <small>/ 13.500</small></div><div class="progress-track"><div class="progress-fill blue-fill" id="questionsBar"></div></div><div class="kpi-foot"><span id="questionsDetail">13.500 restantes</span><span class="trend neutral">Meta anual</span></div></article>
+          <article class="card kpi-card"><div class="kpi-top"><span>Precisão global</span><span class="kpi-icon green"><i data-lucide="crosshair"></i></span></div><div class="kpi-value" id="accuracyValue">0%</div><div class="kpi-foot"><span id="accuracyDetail">0 acertos em 0 questões</span><span class="trend neutral">Cronograma</span></div><div class="mini-bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></article>
+          <article class="card kpi-card"><div class="kpi-top"><span>Média de redação</span><span class="kpi-icon amber"><i data-lucide="file-pen-line"></i></span></div><div class="kpi-value" id="essayValue">— <small>/ 1000</small></div><div class="kpi-foot"><span id="essayDetail">Nenhuma nota registrada</span><span class="trend neutral">Treinos + simulados</span></div><div class="essay-scale"><span>0</span><span>500</span><span>1000</span><div class="essay-marker" id="essayMarker"></div></div></article>
+        </div>
+        <div class="v2-overview-grid">
+          <article class="card xp-card">
+            <div class="xp-card-top"><div><span class="eyebrow">PROGRESSÃO DO ESTUDANTE</span><h2><span id="levelTitle">Nível 1</span> · <span id="rankTitle">Iniciante</span></h2></div><div class="level-emblem" id="levelEmblem">1</div></div>
+            <div class="xp-number"><strong id="xpTotal">0 XP</strong><span id="xpToNext">150 XP para o próximo nível</span></div>
+            <div class="progress-track xp-track"><div class="progress-fill" id="xpBar"></div></div>
+            <div class="xp-foot"><span id="xpLevelProgress">0 / 150 XP</span><span>XP por estudo real</span></div>
+          </article>
+          <article class="card tier-card">
+            <div class="tier-main"><span class="eyebrow">RANKING GERAL</span><div class="tier-line"><strong id="currentTier">F</strong><div><b id="tierName">Em construção</b><small id="tierDelta">Comece registrando seus estudos</small></div></div></div>
+            <div class="tier-progress"><div class="progress-track"><div class="progress-fill" id="tierBar"></div></div><small id="tierNext">Próximo tier: D</small></div>
+            <div class="area-tiers" id="areaTiers"></div>
+            <details class="rank-settings"><summary>Ajustar pesos do ranking</summary><div id="rankWeightsControls"></div><small>Os pesos são normalizados automaticamente para somar 100%.</small></details>
+          </article>
+        </div>
+        <div class="dashboard-grid">
+          <article class="card chart-card">
+            <div class="card-heading"><div><h2>Evolução nos simulados</h2><p>Acertos totais por simulado · máximo de 180</p></div><span class="chart-legend"><i></i> Acertos</span></div>
+            <div class="chart-wrap"><canvas id="evolutionChart" aria-label="Gráfico de evolução dos simulados"></canvas><div class="empty-chart" id="chartEmpty" hidden><i data-lucide="chart-no-axes-combined"></i><strong>Seu gráfico começa com o primeiro simulado</strong><span>Registre seus resultados para acompanhar a evolução.</span></div></div>
+          </article>
+          <article class="card focus-card">
+            <div class="card-heading"><div><h2>Ritmo da preparação</h2><p>Meta semanal de questões</p></div><span class="pill pill-blue">315 / semana</span></div>
+            <div class="weekly-ring" id="weeklyRing"><div><strong id="weeklyPercent">0%</strong><span>da meta</span></div></div>
+            <div class="focus-stats"><div><span>Questões na semana</span><strong id="weeklyCount">0 / 315</strong></div><div><span>Redações registradas</span><strong id="essayCount">0</strong></div></div>
+            <button class="btn btn-secondary full" data-go="schedule">Abrir semana atual <i data-lucide="arrow-up-right"></i></button>
+          </article>
+        </div>
+        <div class="v2-insight-grid">
+          <article class="card tri-card"><div class="card-heading"><div><h2>Estimativa TRI por área</h2><p>Modelo heurístico · não oficial</p></div><span class="pill pill-blue">300–850</span></div><div id="triDashboard" class="tri-bars"></div><div class="tri-warning">A TRI oficial depende dos parâmetros e do padrão de respostas de cada item. Estes valores são aproximações para comparação interna.</div></article>
+          <article class="card timer-card"><div class="card-heading"><div><h2>Tempo de estudo</h2><p>Registre sessões para ganhar XP.</p></div><span class="pill">25 XP / hora</span></div><div class="timer-display" id="timerDisplay">00:00:00</div><div class="timer-controls"><select id="timerSubject"><option>Biologia</option><option>Química</option><option>Física</option><option>Matemática</option><option>Humanas</option><option>Linguagens</option><option>Redação</option></select><button class="btn btn-primary" id="timerStart"><i data-lucide="play"></i> Iniciar</button><button class="btn btn-secondary" id="timerStop" disabled><i data-lucide="square"></i> Finalizar</button></div><div class="timer-foot"><span id="studyTimeTotal">0h estudadas</span><span id="studyBySubject">Por matéria: —</span></div></article>
+        </div>
+        <div class="bottom-grid">
+          <article class="card area-card"><div class="card-heading"><div><h2>Distribuição do estudo</h2><p>Questões registradas por área</p></div></div><div class="area-list" id="areaBreakdown"></div></article>
+          <article class="card tip-card"><div class="tip-art"><i data-lucide="lightbulb"></i></div><div><span class="eyebrow">LEMBRETE DE PERFORMANCE</span><h2>Consistência vence intensidade isolada.</h2><p>Registre questões e erros logo após estudar. O histórico torna suas revisões mais inteligentes.</p><button class="text-button" data-go="errors">Abrir caderno de erros <i data-lucide="arrow-right"></i></button></div></article>
+        </div>
+      </section>
+
+      <section class="page" id="schedulePage">
+        <div class="page-heading"><div><div class="eyebrow">PLANEJAMENTO · JANEIRO A NOVEMBRO</div><h1>Cronograma de estudos</h1><p>44 semanas, seis dias de estudo e três blocos por dia.</p></div><div class="heading-stat"><strong id="scheduleTotal">0 / 13.860</strong><span>questões planejadas</span></div></div>
+        <div class="schedule-toolbar card"><div class="month-tabs" id="monthTabs"></div><div class="week-selector"><label for="weekSelect">Semana</label><select id="weekSelect"></select></div></div>
+        <div class="week-summary">
+          <div><span class="eyebrow" id="weekLabel">JANEIRO · SEMANA 01</span><h2 id="weekTitle">Semana 01 <span>· 04 a 10 jan</span></h2><p>Meta de 315 questões nesta semana.</p></div>
+          <div class="week-progress"><div class="week-progress-top"><strong id="weekProgressText">0 / 315 questões</strong><span id="weekProgressPct">0%</span></div><div class="progress-track"><div class="progress-fill blue-fill" id="weekProgressBar"></div></div></div>
+          <div class="week-tasks"><label class="task-check"><input type="checkbox" id="simTask"><span class="custom-check"></span><span><b id="simTaskTitle">Simulado quinzenal</b><small id="simTaskSub">Programado nesta semana</small></span></label><label class="task-check"><input type="checkbox" id="essayTask"><span class="custom-check"></span><span><b>Redação semanal</b><small>Produção e correção</small></span></label><div class="essay-score-inline"><label for="weekEssayScore">Nota</label><input id="weekEssayScore" type="number" min="0" max="1000" placeholder="—"><span>/ 1000</span></div></div>
+        </div>
+        <article class="card adaptive-card"><div class="card-heading"><div><h2><i data-lucide="brain-circuit"></i> Metas adaptativas</h2><p>Redistribuição sugerida conforme precisão e volume de erros.</p></div><span class="pill pill-blue">315 questões</span></div><div id="adaptiveSuggestion" class="adaptive-suggestion"></div><div class="adaptive-actions"><button class="btn btn-secondary" id="restoreTargets">Restaurar padrão</button><button class="btn btn-primary" id="applyTargets">Aceitar redistribuição</button></div></article>
+        <div class="schedule-days" id="scheduleDays"></div>
+        <div class="schedule-note"><i data-lucide="info"></i><span>Os 18 blocos semanais são sugestões editáveis. A meta de 315 questões é um objetivo de volume, não uma obrigação por matéria.</span></div>
+      </section>
+
+      <section class="page" id="simulationsPage">
+        <div class="page-heading"><div><div class="eyebrow">ACOMPANHAMENTO DE DESEMPENHO</div><h1>Registro de simulados</h1><p>Compare resultados, identifique tendências e ajuste sua estratégia.</p></div><div class="heading-stat"><strong id="simCount">0</strong><span>simulados registrados</span></div></div>
+        <div class="sim-layout">
+          <article class="card form-card"><div class="form-heading"><span class="form-icon"><i data-lucide="clipboard-pen-line"></i></span><div><h2 id="simFormTitle">Novo simulado</h2><p>Preencha os resultados por área.</p></div></div>
+            <form id="simForm">
+              <input type="hidden" id="simId">
+              <div class="field"><label for="simName">Nome do simulado</label><input id="simName" required maxlength="80" placeholder="Ex.: SAS 01, ENEM PPL 2024"></div>
+              <div class="field"><label for="simMonth">Mês de realização</label><select id="simMonth" required></select></div>
+              <div class="form-section-label">ACERTOS POR ÁREA <span>0–45 cada</span></div>
+              <div class="score-grid">
+                <div class="field"><label for="simLang">Linguagens</label><input type="number" id="simLang" min="0" max="45" value="0" required></div>
+                <div class="field"><label for="simHum">Humanas</label><input type="number" id="simHum" min="0" max="45" value="0" required></div>
+                <div class="field"><label for="simNat">Natureza</label><input type="number" id="simNat" min="0" max="45" value="0" required></div>
+                <div class="field"><label for="simMath">Matemática</label><input type="number" id="simMath" min="0" max="45" value="0" required></div>
+              </div>
+              <div class="total-score"><span>Total de acertos</span><strong id="simTotal">0 <small>/ 180</small></strong></div>
+              <details class="coherence-details"><summary>Padrão de acertos para análise de coerência (opcional)</summary><p>Informe quantos acertos foram em questões fáceis e difíceis. O restante será considerado médio.</p><div class="coherence-grid">
+                <label>Linguagens fáceis<input id="easyLang" type="number" min="0" max="45" placeholder="—"></label><label>Linguagens difíceis<input id="hardLang" type="number" min="0" max="45" placeholder="—"></label>
+                <label>Humanas fáceis<input id="easyHum" type="number" min="0" max="45" placeholder="—"></label><label>Humanas difíceis<input id="hardHum" type="number" min="0" max="45" placeholder="—"></label>
+                <label>Natureza fáceis<input id="easyNat" type="number" min="0" max="45" placeholder="—"></label><label>Natureza difíceis<input id="hardNat" type="number" min="0" max="45" placeholder="—"></label>
+                <label>Matemática fáceis<input id="easyMath" type="number" min="0" max="45" placeholder="—"></label><label>Matemática difíceis<input id="hardMath" type="number" min="0" max="45" placeholder="—"></label>
+              </div></details>
+              <div id="simTriPreview" class="sim-tri-preview">A estimativa TRI aparecerá após preencher os acertos.</div>
+              <div class="field"><label for="simEssay">Nota da redação <span class="muted">(0–1000)</span></label><input type="number" id="simEssay" min="0" max="1000" placeholder="Ex.: 880"></div>
+              <div class="field"><label for="simNotes">Observações</label><textarea id="simNotes" rows="3" placeholder="Gestão de tempo, cansaço, estratégia..."></textarea></div>
+              <div class="form-actions"><button type="button" class="btn btn-ghost" id="cancelSimEdit" hidden>Cancelar</button><button class="btn btn-primary" type="submit"><i data-lucide="save"></i> Salvar simulado</button></div>
+            </form>
+          </article>
+          <article class="card history-card"><div class="card-heading"><div><h2>Histórico de resultados</h2><p>Seus registros em ordem cronológica.</p></div><span class="pill" id="historyCount">0 registros</span></div><div id="simHistory" class="sim-history"></div></article>
+        </div>
+      </section>
+
+      <section class="page" id="errorsPage">
+        <div class="page-heading"><div><div class="eyebrow">APRENDIZAGEM ATIVA</div><h1>Caderno de erros</h1><p>Transforme cada erro em um conceito dominado.</p></div><div class="heading-stat"><strong id="errorCount">0</strong><span>erros catalogados</span></div></div>
+        <div class="error-layout">
+          <article class="card form-card"><div class="form-heading"><span class="form-icon coral"><i data-lucide="notebook-pen"></i></span><div><h2>Novo registro</h2><p>Descreva o erro e o raciocínio correto.</p></div></div>
+            <form id="errorForm"><input type="hidden" id="errorId">
+              <div class="field"><label for="errorSubject">Matéria</label><select id="errorSubject" required></select></div>
+              <div class="field"><label for="errorReason">Motivo do erro</label><select id="errorReason" required></select></div>
+              <div class="field"><label for="errorDescription">Questão / conceito e correção</label><textarea id="errorDescription" rows="7" required placeholder="O que eu pensei? Por que estava errado? Qual é o raciocínio correto?"></textarea></div>
+              <label class="task-check form-review"><input type="checkbox" id="errorMastered"><span class="custom-check"></span><span><b>Já revisei e domino este conteúdo</b><small>Você poderá alterar esse status depois.</small></span></label>
+              <div class="form-actions"><button type="button" class="btn btn-ghost" id="cancelErrorEdit" hidden>Cancelar</button><button class="btn btn-primary" type="submit"><i data-lucide="plus"></i> Salvar erro</button></div>
+            </form>
+          </article>
+          <article class="card error-list-card"><div class="card-heading"><div><h2>Seus registros</h2><p>Filtre e retome suas revisões.</p></div><span class="pill" id="errorFilteredCount">0 itens</span></div>
+            <section class="review-panel"><div class="review-panel-heading"><div><h3><i data-lucide="calendar-clock"></i> Revisões do dia / atrasadas</h3><p>Sequência espaçada: 1, 7, 15 e 30 dias.</p></div><span class="pill pill-blue" id="reviewDueCount">0 pendentes</span></div><div id="reviewDueList" class="review-due-list"></div></section>
+            <div class="filter-row"><label><i data-lucide="filter"></i><select id="filterSubject"><option value="">Todas as matérias</option></select></label><label><i data-lucide="tag"></i><select id="filterReason"><option value="">Todos os motivos</option></select></label><label class="mastered-filter"><input type="checkbox" id="hideMastered"> Ocultar dominados</label></div>
+            <div id="errorList" class="error-list"></div>
+          </article>
+        </div>
+      </section>
+      <footer class="app-footer"><span>ATLAS ENEM 2027</span><span>Seus dados ficam armazenados localmente neste navegador.</span><button class="text-button" id="footerExport">Exportar backup <i data-lucide="download"></i></button></footer>
+    </main>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <div class="modal-backdrop" id="confirmModal" hidden><div class="modal card"><span class="modal-icon"><i data-lucide="alert-triangle"></i></span><h2>Resetar todos os dados?</h2><p>Isso apagará cronograma, simulados e caderno de erros deste navegador. Essa ação não pode ser desfeita sem um backup.</p><div class="form-actions"><button class="btn btn-ghost" id="keepData">Cancelar</button><button class="btn btn-danger" id="confirmReset">Sim, resetar</button></div></div></div>
+</body>
+</html>
