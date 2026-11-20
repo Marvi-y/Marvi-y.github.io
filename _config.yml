@@ -1,0 +1,10 @@
+# Configuração do GitHub Pages para o Atlas ENEM 2027
+# Aplicativo estático, sem tema Jekyll.
+
+title: "Atlas ENEM 2027"
+description: "Planejador de estudos para o ENEM 2027"
+lang: "pt-BR"
+
+exclude:
+  - README.md
+  - .gitignore
