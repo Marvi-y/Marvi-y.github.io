@@ -1,3 +1,4 @@
+[README.md](https://github.com/user-attachments/files/35434621/README.md)
 # Atlas ENEM 2027 — Planejador de Estudos
 
 Aplicação web estática para organizar a preparação para o ENEM 2027. Não exige servidor, banco de dados, Node.js ou etapa de build.
@@ -33,7 +34,7 @@ Não é necessário configurar Actions, instalar pacotes ou criar backend.
 - Os dados são salvos automaticamente em `localStorage` no navegador e dispositivo em que a aplicação foi usada.
 - Use **Exportar backup** para baixar um arquivo JSON.
 - Use **Importar backup** para restaurar um JSON exportado anteriormente. A importação substitui os dados atuais.
-- **Resetar dados** restaura os dados fictícios de demonstração.
+- **Resetar dados** zera tudo e começa vazio. **Carregar exemplo** carrega dados fictícios de demonstração (substitui os dados atuais).
 
 > Importante: limpar os dados do site/navegador, usar outro navegador, outro dispositivo ou uma janela privada pode apagar ou não disponibilizar os dados locais. Exporte backups regularmente. O `localStorage` não sincroniza dados entre dispositivos.
 
@@ -48,7 +49,7 @@ A redação semanal permite marcar entrega e registrar nota. Simulados ficam pro
 ## Personalização
 
 - Edite a distribuição inicial de matérias em `DISTRIBUTION` e os assuntos em `TOPICS`, no início de `script.js`.
-- Altere a meta anual no texto e nos cálculos de `updateDashboard()` se desejar outro objetivo.
+- Metas e tamanho do plano ficam nas constantes `WEEKS`, `WEEKLY_GOAL` e `BLOCKS_PER_WEEK` no início de `script.js` (a meta anual é `WEEKS × WEEKLY_GOAL` = 13.860).
 - A chave de armazenamento é `atlas-enem-2027-v1`. Evite alterá-la depois de começar a usar, para não deixar de encontrar os dados existentes.
 
 ## Observações técnicas
@@ -85,3 +86,15 @@ As 44 semanas iniciam na segunda-feira, 4 de janeiro de 2027, e exibem intervalo
 
 ### Migração e backup
 A primeira abertura da v2 preserva semanas, simulados, erros e tema salvos pela v1. Os dados existentes são usados como linha de base do XP, evitando recompensa retroativa. Exportações v2 incluem `v2.xp`, ledger, minutos de estudo, metas adaptativas, histórico de revisão e dados de coerência TRI. Backups v1 continuam importáveis.
+
+## Atualização v2.1 — correções
+
+- XP de redação semanal e simulado agora é concedido uma única vez por semana/simulado (ledger); excluir e recriar simulado não gera XP repetido.
+- Datas passam a usar o fuso local (antes, após 21h no Brasil, gravava o dia seguinte).
+- `adaptivePlan` não altera mais a ordem global das matérias.
+- Erro marcado como dominado no formulário sai da fila de revisões.
+- A data do painel é calculada; a meta anual é única (13.860 = 44 × 315) e centralizada em constantes.
+- Consistência do ranking usa as semanas decorridas como denominador.
+- Gravação em `localStorage` com tratamento de falha (o selo "Salvo" reflete o resultado real).
+- Dados salvos e backups importados são validados e normalizados antes do uso; dados inválidos no armazenamento local são preservados em `atlas-enem-2027-v1-invalido`.
+- O app agora começa vazio; os dados de exemplo são opcionais.
