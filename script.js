@@ -2,6 +2,7 @@
 (() => {
   "use strict";
   const STORAGE_KEY = "atlas-enem-2027-v1";
+  const WEEKS=44,WEEKLY_GOAL=315,BLOCKS_PER_WEEK=18,ANNUAL_GOAL=WEEKS*WEEKLY_GOAL;
   const MONTHS = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro"];
   const SHORT_MONTHS = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov"];
   const DAYS = ["Segunda-feira","Terça-feira","Quarta-feira","Quinta-feira","Sexta-feira","Sábado"];
@@ -42,7 +43,10 @@
     return { number: globalWeek, month: monthIndex, weekInMonth, days, essayDone: false, essayScore: "", simulationDone: false };
   }
   function createInitialState() {
-    const weeks = Array.from({length:44},(_,i)=>createWeek(i+1));
+    return {version:2,theme:"light",weeks:Array.from({length:WEEKS},(_,i)=>createWeek(i+1)),simulations:[],errors:[],v2:null};
+  }
+  function createDemoState() {
+    const weeks = Array.from({length:WEEKS},(_,i)=>createWeek(i+1));
     // Dados fictícios pequenos para que o painel tenha conteúdo demonstrativo.
     weeks[0].days[0].blocks[0] = {...weeks[0].days[0].blocks[0], questions:25, correct:19, completed:true};
     weeks[0].days[0].blocks[2] = {...weeks[0].days[0].blocks[2], questions:20, correct:15};
@@ -64,10 +68,26 @@
     };
   }
   function loadState() {
-    try { const raw=localStorage.getItem(STORAGE_KEY); if(raw){const parsed=JSON.parse(raw); if(parsed && (parsed.version===1 || parsed.version===2) && Array.isArray(parsed.weeks) && parsed.weeks.length===44) return parsed;} } catch(e){console.warn("Falha ao ler dados locais",e);}
+    let raw=null;
+    try {
+      raw=localStorage.getItem(STORAGE_KEY);
+      if(raw){const parsed=JSON.parse(raw); if(parsed&&(parsed.version===1||parsed.version===2)) return sanitizeState(parsed);}
+    } catch(e){
+      console.warn("Falha ao ler dados locais",e);
+      try{if(raw)localStorage.setItem(STORAGE_KEY+"-invalido",raw);}catch(_){}
+    }
     return createInitialState();
   }
-  function save() { localStorage.setItem(STORAGE_KEY,JSON.stringify(state)); updateDashboard(); }
+  function persist() {
+    let ok=true;
+    try { localStorage.setItem(STORAGE_KEY,JSON.stringify(state)); } catch(e){ ok=false; console.warn("Falha ao salvar",e); }
+    const t=$("saveStatusText"),d=document.querySelector("#saveStatus .status-dot");
+    if(t)t.textContent=ok?"Salvo neste dispositivo":"Não foi possível salvar — exporte um backup";
+    if(d)d.style.background=ok?"":"var(--coral)";
+    if(!ok&&!persist.warned){persist.warned=true;notify("Não foi possível salvar neste navegador. Exporte um backup.");}
+    return ok;
+  }
+  function save() { persist(); updateDashboard(); }
   function escapeHTML(value) { return String(value ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
   function notify(message) { const el=$("toast"); el.textContent=message; el.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>el.classList.remove("show"),2500); }
   function initSelects() {
@@ -85,7 +105,7 @@
     $("importBtn").addEventListener("click",()=>$("importFile").click());
     $("resetBtn").addEventListener("click",()=>$("confirmModal").hidden=false);
     $("keepData").addEventListener("click",()=>$("confirmModal").hidden=true);
-    $("confirmReset").addEventListener("click",()=>{state=createInitialState();ensureV2();migrateV1();currentMonth=0;currentWeek=1;save();renderAll();$("confirmModal").hidden=true;notify("Dados de demonstração restaurados.");});
+    $("confirmReset").addEventListener("click",()=>{state=createInitialState();ensureV2();migrateV1();currentMonth=0;currentWeek=1;save();renderAll();$("confirmModal").hidden=true;notify("Dados zerados.");});
   }
   function showPage(name) {
     const names={dashboard:"Dashboard geral",schedule:"Cronograma",simulations:"Simulados",errors:"Caderno de erros"};
@@ -114,21 +134,22 @@
     return {completed,questions,correct,accuracy:questions?correct/questions*100:0,essayScores,essayAvg:essayScores.length?essayScores.reduce((a,b)=>a+b,0)/essayScores.length:null,weekQuestions,area};
   }
   function updateDashboard() {
-    const a=aggregate(),totalTopics=44*18;
+    const a=aggregate(),totalTopics=WEEKS*BLOCKS_PER_WEEK;
+    $("todayLabel").textContent=new Date().toLocaleDateString("pt-BR",{weekday:"long",day:"numeric",month:"long",year:"numeric"}).toUpperCase();
     $("syllabusValue").textContent=(a.completed/totalTopics*100).toFixed(1)+"%";
     $("syllabusBar").style.width=(a.completed/totalTopics*100)+"%";
     $("syllabusDetail").textContent=`${a.completed} de ${totalTopics} blocos concluídos`;
-    $("questionsValue").innerHTML=`${a.questions.toLocaleString("pt-BR")} <small>/ 13.500</small>`;
-    $("questionsBar").style.width=Math.min(100,a.questions/13500*100)+"%";
-    $("questionsDetail").textContent=`${Math.max(0,13500-a.questions).toLocaleString("pt-BR")} restantes`;
+    $("questionsValue").innerHTML=`${a.questions.toLocaleString("pt-BR")} <small>/ ${ANNUAL_GOAL.toLocaleString("pt-BR")}</small>`;
+    $("questionsBar").style.width=Math.min(100,a.questions/ANNUAL_GOAL*100)+"%";
+    $("questionsDetail").textContent=`${Math.max(0,ANNUAL_GOAL-a.questions).toLocaleString("pt-BR")} restantes`;
     $("accuracyValue").textContent=a.accuracy.toFixed(1)+"%";
     $("accuracyDetail").textContent=`${a.correct.toLocaleString("pt-BR")} acertos em ${a.questions.toLocaleString("pt-BR")} questões`;
     $("essayValue").innerHTML=a.essayAvg===null?'— <small>/ 1000</small>':`${Math.round(a.essayAvg)} <small>/ 1000</small>`;
     $("essayDetail").textContent=a.essayScores.length?`${a.essayScores.length} notas registradas`:"Nenhuma nota registrada";
     $("essayMarker").style.left=(a.essayAvg===null?0:a.essayAvg/1000*100)+"%";
-    $("weeklyCount").textContent=`${a.weekQuestions} / 315`;
-    $("weeklyPercent").textContent=Math.round(a.weekQuestions/315*100)+"%";
-    $("weeklyRing").style.background=`conic-gradient(var(--primary) ${Math.min(100,a.weekQuestions/315*100)*3.6}deg,var(--line) 0deg)`;
+    $("weeklyCount").textContent=`${a.weekQuestions} / ${WEEKLY_GOAL}`;
+    $("weeklyPercent").textContent=Math.round(a.weekQuestions/WEEKLY_GOAL*100)+"%";
+    $("weeklyRing").style.background=`conic-gradient(var(--primary) ${Math.min(100,a.weekQuestions/WEEKLY_GOAL*100)*3.6}deg,var(--line) 0deg)`;
     $("essayCount").textContent=state.weeks.filter(w=>w.essayDone).length;
     renderAreaBreakdown(a.area);
     renderChart();
@@ -159,22 +180,22 @@
     $("weekLabel").textContent=`${MONTHS[w.month].toUpperCase()} · SEMANA ${String(w.weekInMonth).padStart(2,"0")}`;
     $("weekTitle").innerHTML=`Semana ${String(w.number).padStart(2,"0")} <span>· ${String((w.weekInMonth-1)*7+1).padStart(2,"0")} a ${String(w.weekInMonth*7).padStart(2,"0")} ${SHORT_MONTHS[w.month].toLowerCase()}</span>`;
     let q=0;w.days.forEach(d=>d.blocks.forEach(b=>q+=Number(b.questions)||0));
-    $("weekProgressText").textContent=`${q} / 315 questões`;$("weekProgressPct").textContent=Math.round(q/315*100)+"%";$("weekProgressBar").style.width=Math.min(100,q/315*100)+"%";
+    $("weekProgressText").textContent=`${q} / ${WEEKLY_GOAL} questões`;$("weekProgressPct").textContent=Math.round(q/WEEKLY_GOAL*100)+"%";$("weekProgressBar").style.width=Math.min(100,q/WEEKLY_GOAL*100)+"%";
     $("simTask").checked=!!w.simulationDone;$("simTaskTitle").textContent=w.number%2===0?"Simulado quinzenal":"Semana sem simulado";$("simTaskSub").textContent=w.number%2===0?"Programado nesta semana":"Próximo simulado na semana "+(w.number+1);
     $("simTask").disabled=w.number%2!==0;$("essayTask").checked=!!w.essayDone;$("weekEssayScore").value=w.essayScore??"";
     $("simTask").onchange=e=>{w.simulationDone=e.target.checked;save();};
     $("essayTask").onchange=e=>{w.essayDone=e.target.checked;save();};
     $("weekEssayScore").onchange=e=>{const v=e.target.value;if(v!==""&&(Number(v)<0||Number(v)>1000)){e.target.value=w.essayScore;notify("A nota deve estar entre 0 e 1000.");return;}w.essayScore=v===""?"":Number(v);save();};
-    $("scheduleDays").innerHTML=w.days.map((day,di)=>`<article class="card day-card"><div class="day-heading"><h3>${day.name}</h3><span>3 blocos · datas 2027</span></div>${day.blocks.map((b,bi)=>`<div class="subject-block"><div class="subject-head"><i class="subject-dot" style="background:${SUBJECT_COLORS[b.subject]||"var(--primary)"}"></i><input aria-label="Assunto da matéria ${b.subject}" data-field="topic" data-day="${di}" data-block="${bi}" value="${escapeHTML(b.topic)}"><label class="complete-toggle"><input type="checkbox" data-field="completed" data-day="${di}" data-block="${bi}" ${b.completed?"checked":""}> Concluído</label></div><div class="subject-fields"><label>Matéria<select data-field="subject" data-day="${di}" data-block="${bi}">${SUBJECTS.map(s=>`<option ${s===b.subject?"selected":""}>${s}</option>`).join("")}</select></label><label>Meta<input type="number" min="0" max="315" data-field="targetQuestions" data-day="${di}" data-block="${bi}" value="${b.targetQuestions||0}"></label><label>Questões<input type="number" min="0" max="999" data-field="questions" data-day="${di}" data-block="${bi}" value="${b.questions||0}"></label><label>Acertos<input type="number" min="0" max="999" data-field="correct" data-day="${di}" data-block="${bi}" value="${b.correct||0}"></label></div></div>`).join("")}</article>`).join("");
+    $("scheduleDays").innerHTML=w.days.map((day,di)=>`<article class="card day-card"><div class="day-heading"><h3>${day.name}</h3><span>3 blocos · datas 2027</span></div>${day.blocks.map((b,bi)=>`<div class="subject-block"><div class="subject-head"><i class="subject-dot" style="background:${SUBJECT_COLORS[b.subject]||"var(--primary)"}"></i><input aria-label="Assunto da matéria ${b.subject}" data-field="topic" data-day="${di}" data-block="${bi}" value="${escapeHTML(b.topic)}"><label class="complete-toggle"><input type="checkbox" data-field="completed" data-day="${di}" data-block="${bi}" ${b.completed?"checked":""}> Concluído</label></div><div class="subject-fields"><label>Matéria<select data-field="subject" data-day="${di}" data-block="${bi}">${SUBJECTS.map(s=>`<option ${s===b.subject?"selected":""}>${s}</option>`).join("")}</select></label><label>Meta<input type="number" min="0" max="${WEEKLY_GOAL}" data-field="targetQuestions" data-day="${di}" data-block="${bi}" value="${b.targetQuestions||0}"></label><label>Questões<input type="number" min="0" max="999" data-field="questions" data-day="${di}" data-block="${bi}" value="${b.questions||0}"></label><label>Acertos<input type="number" min="0" max="999" data-field="correct" data-day="${di}" data-block="${bi}" value="${b.correct||0}"></label></div></div>`).join("")}</article>`).join("");
     $("scheduleDays").querySelectorAll("[data-field]").forEach(el=>el.addEventListener("change",()=>{
       const b=w.days[Number(el.dataset.day)].blocks[Number(el.dataset.block)],field=el.dataset.field;
       if(field==="completed")b.completed=el.checked;
       else if(field==="topic")b.topic=el.value;
       else if(field==="subject"){b.subject=el.value;renderSchedule();save();return;}
       else {const n=Math.max(0,Number(el.value)||0);if(field==="correct"&&n>Number(b.questions)){notify("Acertos não podem superar questões feitas.");el.value=b.correct;return;}if(field==="questions"&&n<Number(b.correct)){notify("Questões não podem ser menores que os acertos.");el.value=b.questions;return;}b[field]=n;}
-      save();const total=w.days.reduce((sum,d)=>sum+d.blocks.reduce((s,x)=>s+(Number(x.questions)||0),0),0);$("weekProgressText").textContent=`${total} / 315 questões`;$("weekProgressPct").textContent=Math.round(total/315*100)+"%";$("weekProgressBar").style.width=Math.min(100,total/315*100)+"%";
+      save();const total=w.days.reduce((sum,d)=>sum+d.blocks.reduce((s,x)=>s+(Number(x.questions)||0),0),0);$("weekProgressText").textContent=`${total} / ${WEEKLY_GOAL} questões`;$("weekProgressPct").textContent=Math.round(total/WEEKLY_GOAL*100)+"%";$("weekProgressBar").style.width=Math.min(100,total/WEEKLY_GOAL*100)+"%";
     }));
-    $("scheduleTotal").textContent=`${state.weeks.reduce((sum,w)=>sum+w.days.reduce((s,d)=>s+d.blocks.reduce((n,b)=>n+(Number(b.questions)||0),0),0),0).toLocaleString("pt-BR")} / 13.860`;
+    $("scheduleTotal").textContent=`${state.weeks.reduce((sum,w)=>sum+w.days.reduce((s,d)=>s+d.blocks.reduce((n,b)=>n+(Number(b.questions)||0),0),0),0).toLocaleString("pt-BR")} / ${ANNUAL_GOAL.toLocaleString("pt-BR")}`;
     if(window.lucide)lucide.createIcons();
   }
 
@@ -197,8 +218,8 @@
       const patternKeys=[["easyLang","hardLang",nums[0]],["easyHum","hardHum",nums[1]],["easyNat","hardNat",nums[2]],["easyMath","hardMath",nums[3]]];
       for(const [easyId,hardId,raw] of patternKeys){const easy=$(easyId).value===""?0:Number($(easyId).value),hard=$(hardId).value===""?0:Number($(hardId).value);if(easy<0||hard<0||easy+hard>raw||!Number.isInteger(easy)||!Number.isInteger(hard)){notify("Acertos fáceis + difíceis não podem superar o total da área.");return;}}
       const id=$("simId").value||"sim-"+Date.now(),old=state.simulations.find(s=>s.id===id);
-      const s={id,name:$("simName").value.trim(),month:Number($("simMonth").value),lang:nums[0],hum:nums[1],nat:nums[2],math:nums[3],essay,notes:$("simNotes").value.trim(),createdAt:old?.createdAt||new Date().toISOString().slice(0,10),tri:{lang:{easy:$("easyLang").value===""?"":Number($("easyLang").value),hard:$("hardLang").value===""?"":Number($("hardLang").value)},hum:{easy:$("easyHum").value===""?"":Number($("easyHum").value),hard:$("hardHum").value===""?"":Number($("hardHum").value)},nat:{easy:$("easyNat").value===""?"":Number($("easyNat").value),hard:$("hardNat").value===""?"":Number($("hardNat").value)},math:{easy:$("easyMath").value===""?"":Number($("easyMath").value),hard:$("hardMath").value===""?"":Number($("hardMath").value)}}};
-      if(old)state.simulations=state.simulations.map(x=>x.id===id?s:x);else {state.simulations.push(s);awardXP(150,"simulado registrado");}
+      const s={id,name:$("simName").value.trim(),month:Number($("simMonth").value),lang:nums[0],hum:nums[1],nat:nums[2],math:nums[3],essay,notes:$("simNotes").value.trim(),createdAt:old?.createdAt||todayISO(),tri:{lang:{easy:$("easyLang").value===""?"":Number($("easyLang").value),hard:$("hardLang").value===""?"":Number($("hardLang").value)},hum:{easy:$("easyHum").value===""?"":Number($("easyHum").value),hard:$("hardHum").value===""?"":Number($("hardHum").value)},nat:{easy:$("easyNat").value===""?"":Number($("easyNat").value),hard:$("hardNat").value===""?"":Number($("hardNat").value)},math:{easy:$("easyMath").value===""?"":Number($("easyMath").value),hard:$("hardMath").value===""?"":Number($("hardMath").value)}}};
+      if(old)state.simulations=state.simulations.map(x=>x.id===id?s:x);else {state.simulations.push(s);if(state.simulations.length>state.v2.simRewardCount){state.v2.simRewardCount=state.simulations.length;awardXP(150,"simulado registrado");}}
       save();resetSimForm();renderSimulations();notify(old?"Simulado atualizado.":"Simulado salvo.");
     };
   }
@@ -220,10 +241,55 @@
   function setupErrorForm(){
     ["filterSubject","filterReason","hideMastered"].forEach(id=>$(id).addEventListener("change",renderErrors));
     $("cancelErrorEdit").onclick=resetErrorForm;
-    $("errorForm").onsubmit=e=>{e.preventDefault();const id=$("errorId").value||"err-"+Date.now(),old=state.errors.find(x=>x.id===id);const item={id,subject:$("errorSubject").value,reason:$("errorReason").value,description:$("errorDescription").value.trim(),mastered:$("errorMastered").checked,createdAt:old?.createdAt||new Date().toISOString().slice(0,10),review:old?.review||{stage:0,nextDue:addDaysISO(todayISO(),1),history:[]}};if(old)state.errors=state.errors.map(x=>x.id===id?item:x);else state.errors.push(item);save();resetErrorForm();renderErrors();notify(old?"Erro atualizado.":"Erro registrado.");};
+    $("errorForm").onsubmit=e=>{e.preventDefault();const id=$("errorId").value||"err-"+Date.now(),old=state.errors.find(x=>x.id===id);const mastered=$("errorMastered").checked;let review=old?.review||{stage:0,nextDue:addDaysISO(todayISO(),1),history:[]};if(mastered)review={...review,stage:4,nextDue:null};else if(old?.mastered)review={stage:0,nextDue:addDaysISO(todayISO(),1),history:review.history||[]};const item={id,subject:$("errorSubject").value,reason:$("errorReason").value,description:$("errorDescription").value.trim(),mastered,createdAt:old?.createdAt||todayISO(),review};if(old)state.errors=state.errors.map(x=>x.id===id?item:x);else state.errors.push(item);save();resetErrorForm();renderErrors();notify(old?"Erro atualizado.":"Erro registrado.");};
   }
-  function exportBackup(){const blob=new Blob([JSON.stringify({...state,exportedAt:new Date().toISOString()},null,2)],{type:"application/json"});const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=`atlas-enem-2027-backup-${new Date().toISOString().slice(0,10)}.json`;a.click();URL.revokeObjectURL(url);notify("Backup exportado.");}
-  function importBackup(e){const file=e.target.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const data=JSON.parse(reader.result);if(!data||data.version!==1||!Array.isArray(data.weeks)||data.weeks.length!==44||!Array.isArray(data.simulations)||!Array.isArray(data.errors))throw new Error("Formato inválido");if(!confirm("Importar este backup substituirá os dados atuais. Deseja continuar?"))return;state={version:1,theme:data.theme==="dark"?"dark":"light",weeks:data.weeks,simulations:data.simulations,errors:data.errors};save();applyTheme();renderAll();notify("Backup importado com sucesso.");}catch(err){alert("Não foi possível importar: arquivo inválido ou incompatível.");}finally{$("importFile").value="";}};reader.readAsText(file);}
+  // ----------------------- Validação de dados salvos/importados -----------------------
+  const ISO_DATE=/^\d{4}-\d{2}-\d{2}$/;
+  const clampInt=(v,min,max,fb=0)=>{const n=Math.round(Number(v));return Number.isFinite(n)?Math.min(max,Math.max(min,n)):fb;};
+  const optInt=(v,min,max)=>(v===""||v===null||v===undefined||!Number.isFinite(Number(v)))?"":clampInt(v,min,max);
+  const safeText=(v,max)=>String(v??"").slice(0,max);
+  const safeId=v=>String(v??"").replace(/[^\w-]/g,"").slice(0,60)||"id-"+Date.now()+Math.random().toString(36).slice(2,6);
+  const safeDate=v=>ISO_DATE.test(String(v))?String(v):todayISO();
+  function sanitizeState(data){
+    if(!data||typeof data!=="object"||!Array.isArray(data.weeks)||data.weeks.length!==WEEKS||!Array.isArray(data.simulations)||!Array.isArray(data.errors))throw new Error("Formato inválido");
+    const weeks=data.weeks.map((w,i)=>{
+      if(!w||!Array.isArray(w.days)||w.days.length!==DAYS.length)throw new Error("Semana inválida");
+      return {number:i+1,month:Math.floor(i/4),weekInMonth:(i%4)+1,essayDone:!!w.essayDone,simulationDone:!!w.simulationDone,essayScore:optInt(w.essayScore,0,1000),
+        days:w.days.map((d,di)=>{
+          if(!d||!Array.isArray(d.blocks)||d.blocks.length!==DISTRIBUTION[di].length)throw new Error("Dia inválido");
+          return {name:DAYS[di],blocks:d.blocks.map((b,bi)=>{
+            const questions=clampInt(b?.questions,0,999);
+            return {subject:SUBJECTS.includes(b?.subject)?b.subject:DISTRIBUTION[di][bi],topic:safeText(b?.topic,120),completed:!!b?.completed,questions,correct:Math.min(questions,clampInt(b?.correct,0,999)),targetQuestions:clampInt(b?.targetQuestions,0,WEEKLY_GOAL)};
+          })};
+        })};
+    });
+    const simulations=data.simulations.map(s=>{
+      const tri={};["lang","hum","nat","math"].forEach(k=>{tri[k]={easy:optInt(s?.tri?.[k]?.easy,0,45),hard:optInt(s?.tri?.[k]?.hard,0,45)};});
+      return {id:safeId(s?.id),name:safeText(s?.name,80)||"Simulado",month:clampInt(s?.month,0,MONTHS.length-1),lang:clampInt(s?.lang,0,45),hum:clampInt(s?.hum,0,45),nat:clampInt(s?.nat,0,45),math:clampInt(s?.math,0,45),essay:optInt(s?.essay,0,1000),notes:safeText(s?.notes,2000),createdAt:safeDate(s?.createdAt),tri};
+    });
+    const errors=data.errors.map(e=>{
+      const mastered=!!e?.mastered,stage=mastered?4:clampInt(e?.review?.stage,0,4);
+      let nextDue=ISO_DATE.test(String(e?.review?.nextDue))?e.review.nextDue:null;
+      if(stage<4&&!nextDue)nextDue=addDaysISO(todayISO(),1);
+      if(stage>=4)nextDue=null;
+      return {id:safeId(e?.id),subject:SUBJECTS.includes(e?.subject)?e.subject:SUBJECTS[0],reason:REASONS.includes(e?.reason)?e.reason:REASONS[0],description:safeText(e?.description,5000),mastered,createdAt:safeDate(e?.createdAt),
+        review:{stage,nextDue,history:(Array.isArray(e?.review?.history)?e.review.history:[]).slice(-50).map(x=>({completedAt:safeDate(x?.completedAt),stage:clampInt(x?.stage,1,4,1)}))}};
+    });
+    let v2=null;const v=data.v2;
+    if(v&&typeof v==="object"){
+      const num=(x,max=1e7)=>{const n=Number(x);return Number.isFinite(n)?Math.min(max,Math.max(0,n)):0;};
+      const ledger={};
+      Object.entries(v.xpLedger&&typeof v.xpLedger==="object"?v.xpLedger:{}).slice(0,5000).forEach(([k,x])=>{if(x===true)ledger[safeText(k,80)]=true;else if(x&&typeof x==="object")ledger[safeText(k,80)]={questions:num(x.questions,99999),correct:num(x.correct,99999),completed:!!x.completed};});
+      const study={};SUBJECTS.forEach(sub=>{if(Number(v.studyBySubject?.[sub])>0)study[sub]=num(v.studyBySubject[sub]);});
+      const weights={};["accuracy","consistency","simScore","simEvolution","done","essays"].forEach(k=>{if(v.rankWeights&&Number.isFinite(Number(v.rankWeights[k])))weights[k]=num(v.rankWeights[k],100);});
+      const tierIds=TIERS.map(t=>t.id);
+      const history=(Array.isArray(v.rankHistory)?v.rankHistory:[]).filter(r=>tierIds.includes(r?.from)&&tierIds.includes(r?.to)).slice(-30).map(r=>({from:r.from,to:r.to,date:safeDate(r.date)}));
+      v2={version:2,xp:num(v.xp),studyMinutes:Math.round(num(v.studyMinutes)),studyBySubject:study,xpLedger:ledger,adaptiveTargets:{},rankHistory:history,rankWeights:weights,simRewardCount:clampInt(v.simRewardCount,0,9999),lastActivityDate:ISO_DATE.test(String(v.lastActivityDate))?v.lastActivityDate:null};
+    }
+    return {version:2,theme:data.theme==="dark"?"dark":"light",weeks,simulations,errors,v2};
+  }
+  function exportBackup(){const blob=new Blob([JSON.stringify({...state,exportedAt:new Date().toISOString()},null,2)],{type:"application/json"});const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=`atlas-enem-2027-backup-${todayISO()}.json`;a.click();URL.revokeObjectURL(url);notify("Backup exportado.");}
+  function importBackup(e){const file=e.target.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const data=JSON.parse(reader.result);if(!data||data.version!==1||!Array.isArray(data.weeks)||data.weeks.length!==WEEKS||!Array.isArray(data.simulations)||!Array.isArray(data.errors))throw new Error("Formato inválido");if(!confirm("Importar este backup substituirá os dados atuais. Deseja continuar?"))return;state={version:1,theme:data.theme==="dark"?"dark":"light",weeks:data.weeks,simulations:data.simulations,errors:data.errors};save();applyTheme();renderAll();notify("Backup importado com sucesso.");}catch(err){alert("Não foi possível importar: arquivo inválido ou incompatível.");}finally{$("importFile").value="";}};reader.readAsText(file);}
 
   // ----------------------- Atlas v2.0 extensions -----------------------
   const V2_VERSION = 2;
@@ -260,6 +326,8 @@
       if(!state.v2.xpLedger[key])state.v2.xpLedger[key]={questions:Number(b.questions)||0,correct:Number(b.correct)||0,completed:!!b.completed};
     })));
     state.simulations.forEach(s=>{if(!s.tri)s.tri={};});
+    state.weeks.forEach(w=>{if(w.essayDone)state.v2.xpLedger["essay-"+w.number]=true;if(w.simulationDone)state.v2.xpLedger["sim-"+w.number]=true;});
+    state.v2.simRewardCount=Math.max(Number(state.v2.simRewardCount)||0,state.simulations.length);
   }
   function migrateV1(){ensureV2();state.version=2;}
   function xpThreshold(level){return level<=1?0:Math.round(150*(level-1)+35*(level-1)*(level-2));}
@@ -294,13 +362,15 @@
     const correct=state.weeks.reduce((n,w)=>n+w.days.reduce((a,d)=>a+d.blocks.reduce((z,b)=>z+(Number(b.correct)||0),0),0),0);
     const accuracy=total?correct/total*100:0;
     const active=state.weeks.filter(w=>w.days.some(d=>d.blocks.some(b=>Number(b.questions)>0)));
-    const consistency=active.length?active.filter(w=>w.days.reduce((a,d)=>a+d.blocks.reduce((z,b)=>z+(Number(b.questions)||0),0),0)>=315).length/active.length*100:0;
+    const now=new Date(),elapsed=Math.max(0,Math.min(WEEKS,Math.floor((new Date(now.getFullYear(),now.getMonth(),now.getDate())-new Date(2027,0,4))/604800000)));
+    const hit=active.filter(w=>w.days.reduce((a,d)=>a+d.blocks.reduce((z,b)=>z+(Number(b.questions)||0),0),0)>=WEEKLY_GOAL).length,denom=Math.max(elapsed,active.length);
+    const consistency=denom?hit/denom*100:0;
     const sims=state.simulations;
     const simScore=sims.length?Math.min(100,sims.reduce((n,s)=>n+simTotal(s),0)/sims.length/180*100):0;
     const ordered=[...sims].sort((a,b)=>(a.createdAt||"").localeCompare(b.createdAt||""));
     const simEvolution=ordered.length>1?Math.max(0,Math.min(100,50+(simTotal(ordered[ordered.length-1])-simTotal(ordered[0]))/180*50)):0;
-    const done=state.weeks.reduce((n,w)=>n+w.days.reduce((a,d)=>a+d.blocks.filter(b=>b.completed).length,0),0)/(44*18)*100;
-    const essays=state.weeks.filter(w=>w.essayDone).length/44*100;
+    const done=state.weeks.reduce((n,w)=>n+w.days.reduce((a,d)=>a+d.blocks.filter(b=>b.completed).length,0),0)/(WEEKS*BLOCKS_PER_WEEK)*100;
+    const essays=state.weeks.filter(w=>w.essayDone).length/WEEKS*100;
     const weights=state.v2.rankWeights||{accuracy:35,consistency:25,simScore:15,simEvolution:10,done:10,essays:5};
     const weightTotal=Object.values(weights).reduce((a,b)=>a+Number(b||0),0)||100;
     const score=(accuracy*weights.accuracy+consistency*weights.consistency+simScore*weights.simScore+simEvolution*weights.simEvolution+done*weights.done+essays*weights.essays)/weightTotal;
@@ -349,7 +419,7 @@
     const weightLabels={accuracy:"Precisão",consistency:"Consistência semanal",simScore:"Desempenho em simulados",simEvolution:"Evolução nos simulados",done:"Conclusão do cronograma",essays:"Redações entregues"};
     $("rankWeightsControls").innerHTML=Object.entries(weightLabels).map(([key,label])=>`<label class="rank-weight"><span>${label}</span><input type="number" min="0" max="100" step="1" data-rank-weight="${key}" value="${state.v2.rankWeights[key]}"><b>%</b></label>`).join("");
     const subj=subjectAccuracy(),areaGroups=[["Natureza",["Biologia","Química","Física"]],["Matemática",["Matemática"]],["Humanas",["História","Geografia","Filosofia","Sociologia"]],["Linguagens",["Linguagens"]]];
-    const week=state.weeks[currentWeek-1];let wq=0,wc=0;week.days.forEach(d=>d.blocks.forEach(b=>{wq+=Number(b.questions)||0;wc+=Number(b.correct)||0;}));const weekPct=wq?wc/wq*100:0,weekScore=weekPct*.7+Math.min(100,wq/315*100)*.3;
+    const week=state.weeks[currentWeek-1];let wq=0,wc=0;week.days.forEach(d=>d.blocks.forEach(b=>{wq+=Number(b.questions)||0;wc+=Number(b.correct)||0;}));const weekPct=wq?wc/wq*100:0,weekScore=weekPct*.7+Math.min(100,wq/WEEKLY_GOAL*100)*.3;
     $("areaTiers").innerHTML=areaGroups.map(([name,ss])=>{let q=0,c=0;ss.forEach(s=>{q+=subj[s].q;c+=subj[s].c;});return `<span class="area-tier">${name}<b>${areaRank(q?c/q*100:0)}</b></span>`;}).join("")+`<span class="area-tier">Semana ${currentWeek}<b>${areaRank(weekScore)}</b></span>`;
     renderTriDashboard();
     $("studyTimeTotal").textContent=`${Math.floor(state.v2.studyMinutes/60)}h ${state.v2.studyMinutes%60}min estudadas`;
@@ -375,9 +445,8 @@
     const weights={};let sum=0;
     SUBJECTS.forEach(s=>{const p=perf[s],acc=p.q?p.c/p.q:0.65;const area=areaFor[s],simPenalty=latest?Math.max(0,(simMean-(simByArea[area]||0))/45)*.55:0;const w=base[s]*(1+(1-acc)*1.5+p.errors*.08+simPenalty);weights[s]=w;sum+=w;});
     const totals={};let used=0;
-    SUBJECTS.forEach(s=>{totals[s]=Math.floor(315*weights[s]/sum);used+=totals[s];});
-    let rem=315-used;SUBJECTS.sort((a,b)=>(315*weights[b]/sum-Math.floor(315*weights[b]/sum))-(315*weights[a]/sum-Math.floor(315*weights[a]/sum))).slice(0,rem).forEach(s=>totals[s]++);
-    SUBJECTS.sort();
+    SUBJECTS.forEach(s=>{totals[s]=Math.floor(WEEKLY_GOAL*weights[s]/sum);used+=totals[s];});
+    let rem=WEEKLY_GOAL-used;[...SUBJECTS].sort((a,b)=>(WEEKLY_GOAL*weights[b]/sum-Math.floor(WEEKLY_GOAL*weights[b]/sum))-(WEEKLY_GOAL*weights[a]/sum-Math.floor(WEEKLY_GOAL*weights[a]/sum))).slice(0,rem).forEach(s=>totals[s]++);
     return totals;
   }
   function renderAdaptive(){
@@ -391,7 +460,7 @@
   }
   function renderReviewDue(){
     const today=todayISO(),due=[];
-    state.errors.forEach(e=>{if(e.review&&e.review.stage<4&&e.review.nextDue&&e.review.nextDue<=today)due.push(e);});
+    state.errors.forEach(e=>{if(!e.mastered&&e.review&&e.review.stage<4&&e.review.nextDue&&e.review.nextDue<=today)due.push(e);});
     $("reviewDueCount").textContent=`${due.length} pendentes`;
     $("reviewDueList").innerHTML=due.length?due.map(e=>`<div class="review-due-item"><div><strong>${escapeHTML(e.subject)} · ${escapeHTML(e.reason)}</strong><small>${escapeHTML(e.description.slice(0,105))}${e.description.length>105?"…":""}</small><span class="review-stage">Etapa ${e.review.stage+1}/4 · ${e.review.nextDue<today?"Atrasada":"Vence hoje"}</span></div><button class="btn btn-primary" data-review-done="${e.id}">Concluir revisão</button><button class="link-action" data-review-retry="${e.id}">Errei novamente</button></div>`).join(""):'<div class="review-empty">Nenhuma revisão vencida hoje. Continue mantendo a sequência!</div>';
     document.querySelectorAll("[data-review-done]").forEach(b=>b.onclick=()=>completeReview(b.dataset.reviewDone));
@@ -420,7 +489,7 @@
   function updateRealCalendar(){
     const actual=new Date(),year=actual.getFullYear();
     let active=0;
-    if(year===2027){const diff=Math.floor((new Date(2027,actual.getMonth(),actual.getDate())-new Date(2027,0,4))/86400000);if(diff>=0&&diff<44*7)active=Math.floor(diff/7)+1;}
+    if(year===2027){const diff=Math.floor((new Date(2027,actual.getMonth(),actual.getDate())-new Date(2027,0,4))/86400000);if(diff>=0&&diff<WEEKS*7)active=Math.floor(diff/7)+1;}
     const target=active|| (actual<new Date(2027,0,4)?1:44);
     if(!calendarInitialized){if(active){currentWeek=active;currentMonth=Math.floor((active-1)/4);}else if(year>2027 || (year===2027 && actual>=new Date(2027,11,1))){currentWeek=44;currentMonth=10;}calendarInitialized=true;
       $("weekSelect").innerHTML=Array.from({length:4},(_,i)=>{const n=currentMonth*4+i+1;return `<option value="${n}" ${n===currentWeek?"selected":""}>Semana ${String(n).padStart(2,"0")}</option>`;}).join("");
@@ -444,7 +513,7 @@
   function setupV2(){
     ensureV2();migrateV1();
     // Persist migrated structure immediately without rewriting legacy records.
-    localStorage.setItem(STORAGE_KEY,JSON.stringify(state));
+    persist();
     setupTimer();
     ["simLang","simHum","simNat","simMath","easyLang","hardLang","easyHum","hardHum","easyNat","hardNat","easyMath","hardMath"].forEach(id=>$(id).addEventListener("input",renderSimTriPreview));
     // v2 export is installed on the visible backup controls.
@@ -459,10 +528,10 @@
   }
   function importV2Backup(e){
     const file=e.target.files?.[0];if(!file)return;const reader=new FileReader();
-    reader.onload=()=>{try{const data=JSON.parse(reader.result);if(!data||!Array.isArray(data.weeks)||data.weeks.length!==44||!Array.isArray(data.simulations)||!Array.isArray(data.errors))throw new Error("Formato inválido");
+    reader.onload=()=>{try{const data=JSON.parse(reader.result);const clean=sanitizeState(data);
       if(!confirm("Importar o backup substituirá os dados atuais. Deseja continuar?"))return;
-      state={...data,version:2,theme:data.theme==="dark"?"dark":"light",v2:data.v2||{version:2,xp:0,studyMinutes:0,xpLedger:{},adaptiveTargets:{},rankHistory:[]}};
-      ensureV2();localStorage.setItem(STORAGE_KEY,JSON.stringify(state));renderAll();renderV2Dashboard();renderReviewDue();notify("Backup importado com dados v2.0.");
+      state=clean;
+      ensureV2();persist();renderAll();renderV2Dashboard();renderReviewDue();notify("Backup importado com dados v2.0.");
     }catch(err){alert("Backup inválido ou incompatível.");}finally{$("importFile").value="";}};
     reader.readAsText(file);
   }
@@ -480,9 +549,10 @@
   // Add one-time rewards for new essay delivery and simulation, while guarding duplicate saves.
   const legacyEssayHandler=$("essayTask");
   function installV2Listeners(){
+    $("demoBtn").addEventListener("click",()=>{if(!confirm("Carregar os dados de exemplo substituirá os dados atuais. Deseja continuar?"))return;state=createDemoState();ensureV2();migrateV1();currentMonth=0;currentWeek=1;save();renderAll();notify("Dados de exemplo carregados.");});
     $("rankWeightsControls").addEventListener("change",e=>{const key=e.target.dataset.rankWeight;if(!key)return;state.v2.rankWeights[key]=Math.max(0,Math.min(100,Number(e.target.value)||0));save();});
-    $("essayTask").addEventListener("change",e=>{if(e.target.checked)awardXP(100,"redação semanal");save();});
-    $("simTask").addEventListener("change",e=>{if(e.target.checked)awardXP(50,"simulado realizado");save();});
+    $("essayTask").addEventListener("change",e=>{const k="essay-"+currentWeek;if(e.target.checked&&!state.v2.xpLedger[k]){state.v2.xpLedger[k]=true;awardXP(100,"redação semanal");}save();});
+    $("simTask").addEventListener("change",e=>{const k="sim-"+currentWeek;if(e.target.checked&&!state.v2.xpLedger[k]){state.v2.xpLedger[k]=true;awardXP(50,"simulado realizado");}save();});
     $("weekSelect").addEventListener("change",()=>{renderAdaptive();updateRealCalendar();});
     $("monthTabs").addEventListener("click",()=>setTimeout(()=>{renderAdaptive();updateRealCalendar();},0));
   }
