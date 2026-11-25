@@ -38,6 +38,7 @@
           <button class="text-button full" id="importBtn"><i data-lucide="upload"></i> Importar backup</button>
           <input type="file" id="importFile" accept="application/json,.json" hidden>
         </div>
+        <button class="nav-item" id="demoBtn"><i data-lucide="flask-conical"></i><span>Carregar exemplo</span></button>
         <button class="nav-item" id="resetBtn"><i data-lucide="refresh-ccw"></i><span>Resetar dados</span></button>
         <div class="user-mini"><div class="avatar">E</div><div><strong>Estudante</strong><small id="sidebarLevel">Nível 1 · Iniciante</small></div><span class="status-dot"></span></div>
       </div>
@@ -48,19 +49,19 @@
         <button class="icon-btn mobile-menu" id="menuBtn" aria-label="Abrir menu"><i data-lucide="menu"></i></button>
         <div class="breadcrumb"><span>Workspace</span><i data-lucide="chevron-right"></i><strong id="pageName">Dashboard geral</strong></div>
         <div class="top-actions">
-          <span class="save-status"><span class="status-dot"></span> Salvo neste dispositivo</span>
+          <span class="save-status" id="saveStatus"><span class="status-dot"></span> <span id="saveStatusText">Salvo neste dispositivo</span></span>
           <button class="icon-btn" id="themeBtn" aria-label="Alternar tema"><i data-lucide="moon"></i></button>
         </div>
       </header>
 
       <section class="page active" id="dashboardPage">
         <div class="page-heading">
-          <div><div class="eyebrow">SEXTA-FEIRA, 20 DE NOVEMBRO DE 2026</div><h1>Seu próximo passo começa aqui.</h1><p>Acompanhe sua consistência e transforme preparação em resultado.</p></div>
+          <div><div class="eyebrow" id="todayLabel"></div><h1>Seu próximo passo começa aqui.</h1><p>Acompanhe sua consistência e transforme preparação em resultado.</p></div>
           <button class="btn btn-primary" data-go="schedule"><i data-lucide="calendar-plus"></i> Ver cronograma</button>
         </div>
         <div class="kpi-grid">
           <article class="card kpi-card"><div class="kpi-top"><span>Progresso do edital</span><span class="kpi-icon purple"><i data-lucide="book-open-check"></i></span></div><div class="kpi-value" id="syllabusValue">0%</div><div class="progress-track"><div class="progress-fill purple-fill" id="syllabusBar"></div></div><div class="kpi-foot"><span id="syllabusDetail">0 de 792 tópicos concluídos</span><span class="trend neutral">Cronograma</span></div></article>
-          <article class="card kpi-card"><div class="kpi-top"><span>Questões resolvidas</span><span class="kpi-icon blue"><i data-lucide="target"></i></span></div><div class="kpi-value" id="questionsValue">0 <small>/ 13.500</small></div><div class="progress-track"><div class="progress-fill blue-fill" id="questionsBar"></div></div><div class="kpi-foot"><span id="questionsDetail">13.500 restantes</span><span class="trend neutral">Meta anual</span></div></article>
+          <article class="card kpi-card"><div class="kpi-top"><span>Questões resolvidas</span><span class="kpi-icon blue"><i data-lucide="target"></i></span></div><div class="kpi-value" id="questionsValue">0 <small>/ 13.860</small></div><div class="progress-track"><div class="progress-fill blue-fill" id="questionsBar"></div></div><div class="kpi-foot"><span id="questionsDetail">13.860 restantes</span><span class="trend neutral">Meta anual</span></div></article>
           <article class="card kpi-card"><div class="kpi-top"><span>Precisão global</span><span class="kpi-icon green"><i data-lucide="crosshair"></i></span></div><div class="kpi-value" id="accuracyValue">0%</div><div class="kpi-foot"><span id="accuracyDetail">0 acertos em 0 questões</span><span class="trend neutral">Cronograma</span></div><div class="mini-bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></article>
           <article class="card kpi-card"><div class="kpi-top"><span>Média de redação</span><span class="kpi-icon amber"><i data-lucide="file-pen-line"></i></span></div><div class="kpi-value" id="essayValue">— <small>/ 1000</small></div><div class="kpi-foot"><span id="essayDetail">Nenhuma nota registrada</span><span class="trend neutral">Treinos + simulados</span></div><div class="essay-scale"><span>0</span><span>500</span><span>1000</span><div class="essay-marker" id="essayMarker"></div></div></article>
         </div>
